@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String     @id @default(uuid())
+  nome      String
+  apiKey    String     @unique @map("api_key")
+  ativo     Boolean    @default(true)
+  createdAt DateTime   @default(now()) @map("created_at")
+  instances Instance[]
+
+  @@map("tenants")
+}
+
+model Instance {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  nome          String?
+  numero        String?
+  status        String    @default("DESCONECTADO") // DESCONECTADO | QR_PENDENTE | CONECTADO | ERRO
+  webhookUrl    String?   @map("webhook_url")
+  webhookSecret String?   @map("webhook_secret")
+  sessionPath   String    @unique @map("session_path")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  messages      Message[]
+  otpCodes      OtpCode[]
+  conversations ConversationState[]
+
+  @@map("instances")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  instanceId     String   @map("instance_id")
+  instance       Instance @relation(fields: [instanceId], references: [id])
+  direcao        String // ENVIADA | RECEBIDA
+  numeroDestino  String?  @map("numero_destino")
+  tipo           String   @default("TEXTO") // TEXTO | OTP | NOTIFICACAO | TEMPLATE
+  conteudo       String?
+  status         String   @default("PENDENTE") // PENDENTE | ENVIADA | ENTREGUE | LIDA | FALHA
+  externalId     String?  @map("external_id")
+  erro           String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([instanceId])
+  @@map("messages")
+}
+
+model OtpCode {
+  id         String   @id @default(uuid())
+  instanceId String   @map("instance_id")
+  instance   Instance @relation(fields: [instanceId], references: [id])
+  numero     String
+  codigo     String
+  usado      Boolean  @default(false)
+  tentativas Int      @default(0)
+  expiraEm   DateTime @map("expira_em")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([instanceId, numero])
+  @@map("otp_codes")
+}
+
+model ConversationState {
+  instanceId String   @map("instance_id")
+  instance   Instance @relation(fields: [instanceId], references: [id])
+  numero     String
+  etapa      String?
+  dados      Json     @default("{}")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@id([instanceId, numero])
+  @@map("conversation_state")
+}
