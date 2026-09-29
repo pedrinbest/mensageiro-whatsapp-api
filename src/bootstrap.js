@@ -42,6 +42,17 @@ function ligarListenerDeMensagens() {
     sessionManager.on('message', async ({ instanceId, message }) => {
         if (message.fromMe) return;
 
+        const from = message.from || '';
+
+        // Ignora status do WhatsApp, canais/newsletters e transmissões de sistema
+        if (
+            from === 'status@broadcast' ||
+            from.endsWith('@broadcast') ||
+            from.endsWith('@newsletter')
+        ) {
+            return;
+        }
+
         try {
             await registrarMensagemRecebida(instanceId, message);
             await encaminharParaWebhook(instanceId, message);

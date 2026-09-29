@@ -44,10 +44,10 @@ model Message {
   direcao        String // ENVIADA | RECEBIDA
   numeroDestino  String?  @map("numero_destino")
   tipo           String   @default("TEXTO") // TEXTO | OTP | NOTIFICACAO | TEMPLATE
-  conteudo       String?
+  conteudo       String?  @db.Text
   status         String   @default("PENDENTE") // PENDENTE | ENVIADA | ENTREGUE | LIDA | FALHA
   externalId     String?  @map("external_id")
-  erro           String?
+  erro           String?  @db.Text
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([instanceId])

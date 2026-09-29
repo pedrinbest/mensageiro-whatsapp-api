@@ -45,17 +45,22 @@ async function encaminharParaWebhook(instanceId, message) {
 }
 
 async function registrarMensagemRecebida(instanceId, message) {
+    const conteudoBruto = message.body || '';
+    const conteudo = conteudoBruto.length > 5000 
+        ? conteudoBruto.slice(0, 5000) + '... (truncado)' 
+        : conteudoBruto;
+
     await prisma.message.create({
         data: {
             instanceId,
             direcao: 'RECEBIDA',
-            numeroDestino: (message.from || '').replace('@c.us', ''),
+            numeroDestino: (message.from || '').replace('@c.us', '').replace('@g.us', '').replace('@newsletter', ''),
             tipo: 'TEXTO',
-            conteudo: message.body,
+            conteudo,
             status: 'ENTREGUE',
             externalId: message.id?._serialized || null,
         },
-    });
+    }).catch((err) => console.error(`[Message Create DB Erro] ${err.message}`));
 }
 
 module.exports = { encaminharParaWebhook, registrarMensagemRecebida };
