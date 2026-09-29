@@ -9,7 +9,10 @@ const prisma = require('../db/prisma');
 async function encaminharParaWebhook(instanceId, message) {
     const instancia = await prisma.instance.findUnique({ where: { id: instanceId } });
 
-    if (!instancia?.webhookUrl) return;
+    if (!instancia?.webhookUrl) {
+        console.log(`[Webhook Aviso] Instancia ${instanceId} nao possui webhookUrl cadastrada no banco. Ignorando dispatch.`);
+        return;
+    }
 
     const payload = {
         instanceId,
@@ -26,7 +29,8 @@ async function encaminharParaWebhook(instanceId, message) {
         .digest('hex');
 
     try {
-        await fetch(instancia.webhookUrl, {
+        console.log(`[Webhook -> ${instancia.webhookUrl}] Enviando mensagem recebida de ${payload.numero}...`);
+        const response = await fetch(instancia.webhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -34,8 +38,9 @@ async function encaminharParaWebhook(instanceId, message) {
             },
             body: corpo,
         });
+        console.log(`[Webhook Resposta] HTTP Status: ${response.status} de ${instancia.webhookUrl}`);
     } catch (error) {
-        console.error(`Falha ao entregar webhook da instancia ${instanceId}:`, error.message);
+        console.error(`[Webhook Erro] Falha ao entregar webhook da instancia ${instanceId} em ${instancia.webhookUrl}:`, error.message);
     }
 }
 

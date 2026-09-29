@@ -13,12 +13,23 @@ async function iniciarTodasInstancias() {
     });
 
     for (const instancia of instancias) {
+        // Evita tentar criar uma instancia que ja esta ativa no processo
+        // (pode ocorrer em hot-reload com nodemon ou imports duplos).
+        if (sessionManager.estaAtiva(instancia.id)) {
+            console.log(`Instancia ${instancia.id} (${instancia.nome}) ja esta ativa, ignorando.`);
+            continue;
+        }
+
         try {
             await sessionManager.criarInstancia(instancia.id);
             iniciarWorker(instancia.id);
             console.log(`Instancia ${instancia.id} (${instancia.nome}) reconectada.`);
         } catch (erro) {
             console.error(`Falha ao reconectar instancia ${instancia.id}:`, erro.message);
+            // Marca como DESCONECTADO para nao tentar reconectar infinitamente
+            await prisma.instance
+                .update({ where: { id: instancia.id }, data: { status: 'DESCONECTADO' } })
+                .catch(() => {});
         }
     }
 }

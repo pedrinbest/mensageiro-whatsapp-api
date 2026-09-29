@@ -9,6 +9,33 @@ const criarInstanciaSchema = z.object({
     webhookUrl: z.string().url().optional(),
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Listeners registrados UMA UNICA VEZ no escopo do modulo.
+// Registrar dentro de routes() causaria listeners duplicados a cada
+// fastify.register(), pois a funcao e chamada multiplas vezes.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Map em escopo de modulo: persiste enquanto o processo estiver no ar.
+const ultimoQrPorInstancia = new Map();
+
+sessionManager.on('qr', ({ instanceId, qr }) => {
+    ultimoQrPorInstancia.set(instanceId, qr);
+});
+
+sessionManager.on('ready', async ({ instanceId, numero }) => {
+    ultimoQrPorInstancia.delete(instanceId);
+    await prisma.instance.update({
+        where: { id: instanceId },
+        data: { status: 'CONECTADO', numero },
+    }).catch((err) => console.error(`Erro ao atualizar status CONECTADO (${instanceId}):`, err.message));
+});
+
+sessionManager.on('disconnected', async ({ instanceId }) => {
+    await prisma.instance
+        .update({ where: { id: instanceId }, data: { status: 'DESCONECTADO' } })
+        .catch(() => {});
+});
+
 async function routes(fastify) {
     // Cria uma instancia no banco e sobe o client (QR sera emitido via evento 'qr')
     fastify.post('/instances', async (req, reply) => {
@@ -71,26 +98,6 @@ async function routes(fastify) {
 
     // Um QR so e util em base64/imagem no mundo real; aqui devolvemos a string
     // crua para o consumidor renderizar (ex: lib qrcode no frontend dele).
-    let ultimoQrPorInstancia = new Map();
-
-    sessionManager.on('qr', ({ instanceId, qr }) => {
-        ultimoQrPorInstancia.set(instanceId, qr);
-    });
-
-    sessionManager.on('ready', async ({ instanceId, numero }) => {
-        ultimoQrPorInstancia.delete(instanceId);
-        await prisma.instance.update({
-            where: { id: instanceId },
-            data: { status: 'CONECTADO', numero },
-        });
-    });
-
-    sessionManager.on('disconnected', async ({ instanceId }) => {
-        await prisma.instance
-            .update({ where: { id: instanceId }, data: { status: 'DESCONECTADO' } })
-            .catch(() => {});
-    });
-
     fastify.get('/instances/:id/qr', { preHandler: autorizarInstanciaDoTenant }, async (req, reply) => {
         const qr = ultimoQrPorInstancia.get(req.params.id);
 
@@ -101,15 +108,32 @@ async function routes(fastify) {
         return reply.send({ qr });
     });
 
-    fastify.delete('/instances/:id', { preHandler: autorizarInstanciaDoTenant }, async (req, reply) => {
-        await sessionManager.destruirInstancia(req.params.id);
-        await pararWorker(req.params.id);
-        await prisma.instance.update({
+    fastify.put('/instances/:id', { preHandler: autorizarInstanciaDoTenant }, async (req, reply) => {
+        const { webhookUrl, nome } = req.body || {};
+        const data = {};
+        if (webhookUrl !== undefined) data.webhookUrl = webhookUrl;
+        if (nome !== undefined) data.nome = nome;
+
+        const instancia = await prisma.instance.update({
             where: { id: req.params.id },
-            data: { status: 'DESCONECTADO' },
+            data,
         });
 
-        return reply.send({ status: 'DESCONECTADO' });
+        return reply.send(instancia);
+    });
+
+    fastify.delete('/instances/:id', { preHandler: autorizarInstanciaDoTenant }, async (req, reply) => {
+        const instanceId = req.params.id;
+
+        await sessionManager.destruirInstancia(instanceId).catch(() => {});
+        await pararWorker(instanceId).catch(() => {});
+        ultimoQrPorInstancia.delete(instanceId);
+
+        await prisma.instance.delete({
+            where: { id: instanceId },
+        }).catch((err) => console.error(`Erro ao deletar instancia ${instanceId} do Prisma:`, err.message));
+
+        return reply.send({ status: 'DELETADO', id: instanceId });
     });
 }
 

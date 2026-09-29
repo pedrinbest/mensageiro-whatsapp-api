@@ -22,7 +22,7 @@ variável compartilhada que faz mensagens vazarem entre números diferentes.
 ## Requisitos
 
 - Node.js 18+
-- PostgreSQL
+- MySQL 8+
 - Redis (para as filas BullMQ)
 
 ## Subindo o ambiente
@@ -31,7 +31,7 @@ variável compartilhada que faz mensagens vazarem entre números diferentes.
 # 1. Instalar dependências
 npm install
 
-# 2. Subir Postgres e Redis localmente (ou aponte para instâncias já existentes)
+# 2. Subir MySQL e Redis localmente (ou aponte para instâncias já existentes)
 docker compose up -d
 
 # 3. Configurar variáveis de ambiente
@@ -50,7 +50,7 @@ npm run dev
 ### 1. Criar um tenant (uma vez, via chave administrativa)
 
 ```bash
-curl -X POST http://localhost:3000/admin/tenants \
+curl -X POST http://localhost:9000/admin/tenants \
   -H "Content-Type: application/json" \
   -H "X-Admin-Key: <ADMIN_KEY do .env>" \
   -d '{"nome": "Minha Empresa"}'
@@ -61,7 +61,7 @@ Guarde o `apiKey` retornado — é ele que autentica todas as chamadas seguintes
 ### 2. Criar uma instância (conectar um número)
 
 ```bash
-curl -X POST http://localhost:3000/instances \
+curl -X POST http://localhost:9000/instances \
   -H "Authorization: Bearer <api_key do tenant>" \
   -H "Content-Type: application/json" \
   -d '{"nome": "Suporte", "webhookUrl": "https://meu-bot.com/webhook"}'
@@ -185,5 +185,5 @@ src/
   bootstrap.js               # reconecta instâncias ativas ao subir
   server.js                  # entrypoint Fastify
 prisma/schema.prisma         # modelo de dados
-docker-compose.yml           # Postgres + Redis para dev
+docker-compose.yml           # MySQL + Redis para dev
 ```
