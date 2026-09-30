@@ -32,6 +32,8 @@ class SessionManager extends EventEmitter {
             }),
             puppeteer: {
                 headless: true,
+                protocolTimeout: 180000, // 3 minutos para permitir injeção de scripts mesmo sob carga do servidor
+                timeout: 180000,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',

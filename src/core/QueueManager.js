@@ -12,7 +12,7 @@ const workers = new Map(); // instanceId -> Worker
 
 function getFila(instanceId) {
     if (!filas.has(instanceId)) {
-        filas.set(instanceId, new Queue(`envio:${instanceId}`, { connection }));
+        filas.set(instanceId, new Queue(`envio_${instanceId}`, { connection }));
     }
     return filas.get(instanceId);
 }
@@ -50,7 +50,7 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
     const duracaoEnvio = Number(process.env.RATE_LIMIT_DURATION_MS || janelaMs);
 
     const worker = new Worker(
-        `envio:${instanceId}`,
+        `envio_${instanceId}`,
         async (job) => {
             const { numero, mensagem, tipo } = job.data;
             const client = sessionManager.getClient(instanceId);

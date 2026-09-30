@@ -40,9 +40,19 @@ async function iniciarTodasInstancias() {
  */
 function ligarListenerDeMensagens() {
     sessionManager.on('message', async ({ instanceId, message }) => {
-        if (message.fromMe) return;
-
         const from = message.from || '';
+        const to = message.to || '';
+
+        // Se a mensagem foi disparada pelo próprio aparelho (fromMe):
+        // Permitimos APENAS se o destinatário for o próprio número (conversa consigo mesmo / teste)
+        // Isso impede loops infinitos quando o bot responde clientes externos, mas permite testes no próprio celular.
+        const isSelfMessage = Boolean(
+            from && to && (from === to || from.split('@')[0] === to.split('@')[0])
+        );
+
+        if (message.fromMe && !isSelfMessage) {
+            return;
+        }
 
         // Ignora status do WhatsApp, canais/newsletters, transmissões de sistema e grupos
         if (
@@ -51,6 +61,7 @@ function ligarListenerDeMensagens() {
             from.endsWith('@newsletter') ||
             from.endsWith('@lid') ||
             from.endsWith('@g.us') ||
+            to.endsWith('@g.us') ||
             message.isGroupMsg
         ) {
             return;
