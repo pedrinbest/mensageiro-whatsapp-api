@@ -42,6 +42,7 @@ function ligarListenerDeMensagens() {
     sessionManager.on('message', async ({ instanceId, message }) => {
         const from = message.from || '';
         const to = message.to || '';
+        const bodyPreview = (message.body || '').replace(/\n/g, ' ').slice(0, 60);
 
         // Se a mensagem foi disparada pelo próprio aparelho (fromMe):
         // Permitimos APENAS se o destinatário for o próprio número (conversa consigo mesmo / teste)
@@ -67,11 +68,14 @@ function ligarListenerDeMensagens() {
             return;
         }
 
+        console.log(`\n📨 [MENSAGEM RECEBIDA] Instância: ${instanceId}`);
+        console.log(`   └ De: ${from} | Para: ${to} | Self: ${isSelfMessage} | Texto: "${bodyPreview}"`);
+
         try {
             await registrarMensagemRecebida(instanceId, message);
             await encaminharParaWebhook(instanceId, message);
         } catch (erro) {
-            console.error(`Erro processando mensagem recebida (instancia ${instanceId}):`, erro.message);
+            console.error(`❌ Erro processando mensagem recebida (instancia ${instanceId}):`, erro.message);
         }
     });
 }
