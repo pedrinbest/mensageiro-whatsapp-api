@@ -13,8 +13,6 @@ async function iniciarTodasInstancias() {
     });
 
     for (const instancia of instancias) {
-        // Evita tentar criar uma instancia que ja esta ativa no processo
-        // (pode ocorrer em hot-reload com nodemon ou imports duplos).
         if (sessionManager.estaAtiva(instancia.id)) {
             console.log(`Instancia ${instancia.id} (${instancia.nome}) ja esta ativa, ignorando.`);
             continue;
@@ -26,10 +24,6 @@ async function iniciarTodasInstancias() {
             console.log(`Instancia ${instancia.id} (${instancia.nome}) reconectada.`);
         } catch (erro) {
             console.error(`Falha ao reconectar instancia ${instancia.id}:`, erro.message);
-            // Marca como DESCONECTADO para nao tentar reconectar infinitamente
-            await prisma.instance
-                .update({ where: { id: instancia.id }, data: { status: 'DESCONECTADO' } })
-                .catch(() => {});
         }
     }
 }
@@ -41,35 +35,20 @@ async function iniciarTodasInstancias() {
 function ligarListenerDeMensagens() {
     sessionManager.on('message', async ({ instanceId, message }) => {
         const from = message.from || '';
-        const to = message.to || '';
-        const bodyPreview = (message.body || '').replace(/\n/g, ' ').slice(0, 60);
 
-        // Se a mensagem foi disparada pelo próprio aparelho (fromMe):
-        // Permitimos APENAS se o destinatário for o próprio número (conversa consigo mesmo / teste)
-        // Isso impede loops infinitos quando o bot responde clientes externos, mas permite testes no próprio celular.
-        const isSelfMessage = Boolean(
-            from && to && (from === to || from.split('@')[0] === to.split('@')[0])
-        );
-
-        if (message.fromMe && !isSelfMessage) {
-            return;
-        }
-
-        // Ignora status do WhatsApp, canais/newsletters, transmissões de sistema e grupos
+        // Ignora status do WhatsApp, canais/newsletters e transmissões
         if (
             from === 'status@broadcast' ||
             from.endsWith('@broadcast') ||
             from.endsWith('@newsletter') ||
-            from.endsWith('@lid') ||
             from.endsWith('@g.us') ||
-            to.endsWith('@g.us') ||
             message.isGroupMsg
         ) {
             return;
         }
 
-        console.log(`\n📨 [MENSAGEM RECEBIDA] Instância: ${instanceId}`);
-        console.log(`   └ De: ${from} | Para: ${to} | Self: ${isSelfMessage} | Texto: "${bodyPreview}"`);
+        console.log(`\n📨 [MENSAGEM CAPTURADA] Instância: ${instanceId}`);
+        console.log(`   └ De: ${from} | Texto: "${(message.body || '').slice(0, 50)}"`);
 
         try {
             await registrarMensagemRecebida(instanceId, message);

@@ -3,14 +3,12 @@ const prisma = require('../db/prisma');
 
 /**
  * Encaminha uma mensagem recebida para o webhook cadastrado NAQUELA instancia.
- * O payload sempre leva instanceId explicito, para o consumidor nunca precisar
- * adivinhar de qual numero a mensagem chegou.
  */
 async function encaminharParaWebhook(instanceId, message) {
     const instancia = await prisma.instance.findUnique({ where: { id: instanceId } });
 
     if (!instancia?.webhookUrl) {
-        console.log(`[Webhook Aviso] Instancia ${instanceId} nao possui webhookUrl cadastrada no banco. Ignorando dispatch.`);
+        console.log(`[Webhook Aviso] Instancia ${instanceId} nao possui webhookUrl cadastrada.`);
         return;
     }
 
@@ -30,7 +28,7 @@ async function encaminharParaWebhook(instanceId, message) {
         .digest('hex');
 
     try {
-        console.log(`[Webhook -> ${instancia.webhookUrl}] Enviando mensagem recebida de ${payload.numero} ("${textoMensagem.slice(0, 40)}")...`);
+        console.log(`[Webhook -> ${instancia.webhookUrl}] Enviando de ${payload.numero}: "${textoMensagem.slice(0, 30)}"...`);
         const response = await fetch(instancia.webhookUrl, {
             method: 'POST',
             headers: {
@@ -38,16 +36,15 @@ async function encaminharParaWebhook(instanceId, message) {
                 'X-Webhook-Signature': assinatura,
             },
             body: corpo,
-            signal: AbortSignal.timeout(6000), // Timeout de 6 segundos para não travar a fila do Node
         });
-        console.log(`[Webhook Resposta] HTTP Status: ${response.status} de ${instancia.webhookUrl}`);
+        console.log(`[Webhook Resposta] Status: ${response.status}`);
     } catch (error) {
-        console.error(`[Webhook Erro] Falha ao entregar webhook da instancia ${instanceId} em ${instancia.webhookUrl}:`, error.message);
+        console.error(`[Webhook Erro] Falha ao entregar em ${instancia.webhookUrl}:`, error.message);
     }
 }
 
 async function registrarMensagemRecebida(instanceId, message) {
-    const conteudoBruto = message.body || message.caption || `[Mensagem tipo: ${message.type || 'desconhecido'}]`;
+    const conteudoBruto = message.body || message.caption || '';
     const conteudo = conteudoBruto.length > 5000 
         ? conteudoBruto.slice(0, 5000) + '... (truncado)' 
         : conteudoBruto;
@@ -62,7 +59,7 @@ async function registrarMensagemRecebida(instanceId, message) {
             status: 'ENTREGUE',
             externalId: message.id?._serialized || null,
         },
-    }).catch((err) => console.error(`[Message Create DB Erro] ${err.message}`));
+    }).catch((err) => console.error(`[Prisma DB Erro] Falha ao salvar mensagem:`, err.message));
 }
 
 module.exports = { encaminharParaWebhook, registrarMensagemRecebida };
