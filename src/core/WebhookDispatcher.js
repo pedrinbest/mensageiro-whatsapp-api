@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../db/prisma');
+const { extrairNumero } = require('../utils/helpers');
 
 /**
  * Encaminha uma mensagem recebida para o webhook cadastrado NAQUELA instancia.
@@ -13,9 +14,11 @@ async function encaminharParaWebhook(instanceId, message) {
     }
 
     const textoMensagem = message.body || message.caption || '';
+    const numeroLimpo = extrairNumero(message.from) || extrairNumero(message.to);
+
     const payload = {
         instanceId,
-        numero: (message.from || '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '').replace('@newsletter', ''),
+        numero: numeroLimpo,
         mensagem: textoMensagem,
         isGrupo: message.from?.endsWith('@g.us') || false,
         timestamp: message.timestamp,
@@ -49,11 +52,13 @@ async function registrarMensagemRecebida(instanceId, message) {
         ? conteudoBruto.slice(0, 5000) + '... (truncado)' 
         : conteudoBruto;
 
+    const numeroLimpo = extrairNumero(message.from) || extrairNumero(message.to);
+
     await prisma.message.create({
         data: {
             instanceId,
             direcao: 'RECEBIDA',
-            numeroDestino: (message.from || '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '').replace('@newsletter', ''),
+            numeroDestino: numeroLimpo,
             tipo: 'TEXTO',
             conteudo,
             status: 'ENTREGUE',

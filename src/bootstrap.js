@@ -2,6 +2,7 @@ const prisma = require('./db/prisma');
 const sessionManager = require('./core/SessionManager');
 const { iniciarWorker } = require('./core/QueueManager');
 const { encaminharParaWebhook, registrarMensagemRecebida } = require('./core/WebhookDispatcher');
+const { extrairNumero } = require('./utils/helpers');
 
 /**
  * Reconecta todas as instancias que ja estiveram CONECTADAS/QR_PENDENTE
@@ -35,20 +36,31 @@ async function iniciarTodasInstancias() {
 function ligarListenerDeMensagens() {
     sessionManager.on('message', async ({ instanceId, message }) => {
         const from = message.from || '';
+        const to = message.to || '';
+        const numFrom = extrairNumero(from);
+        const numTo = extrairNumero(to);
 
-        // Ignora status do WhatsApp, canais/newsletters e transmissões
+        // Se a mensagem foi disparada pelo próprio aparelho (fromMe):
+        // Só processamos se for mensagem enviada para o próprio número (conversa com você mesmo / teste)
+        // Isso evita loops infinitos com clientes externos.
+        if (message.fromMe && numFrom && numTo && numFrom !== numTo) {
+            return;
+        }
+
+        // Ignora status do WhatsApp, canais/newsletters e grupos
         if (
             from === 'status@broadcast' ||
             from.endsWith('@broadcast') ||
             from.endsWith('@newsletter') ||
             from.endsWith('@g.us') ||
+            to.endsWith('@g.us') ||
             message.isGroupMsg
         ) {
             return;
         }
 
-        console.log(`\n📨 [MENSAGEM CAPTURADA] Instância: ${instanceId}`);
-        console.log(`   └ De: ${from} | Texto: "${(message.body || '').slice(0, 50)}"`);
+        console.log(`\n📨 [MENSAGEM RECEBIDA] Instância: ${instanceId}`);
+        console.log(`   └ De: ${from} (${numFrom}) | Texto: "${(message.body || '').slice(0, 50)}"`);
 
         try {
             await registrarMensagemRecebida(instanceId, message);

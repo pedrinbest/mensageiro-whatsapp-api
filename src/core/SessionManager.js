@@ -77,16 +77,9 @@ class SessionManager extends EventEmitter {
             this.emit('disconnected', { instanceId, reason });
         });
 
-        // 1. Mensagens recebidas de outros números (evento padrão oficial do whatsapp-web.js)
-        client.on('message', (message) => {
-            this.emit('message', { instanceId, message });
-        });
-
-        // 2. Mensagens criadas: captura apenas mensagens para si mesmo (self-test)
+        // Captura todas as mensagens emitidas pelo WhatsApp
         client.on('message_create', (message) => {
-            if (message.fromMe && message.from && message.to && (message.from === message.to || message.from.split('@')[0] === message.to.split('@')[0])) {
-                this.emit('message', { instanceId, message });
-            }
+            this.emit('message', { instanceId, message });
         });
 
         try {
