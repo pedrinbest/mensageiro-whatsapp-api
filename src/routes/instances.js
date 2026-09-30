@@ -1,7 +1,7 @@
 const { z } = require('zod');
 const prisma = require('../db/prisma');
 const sessionManager = require('../core/SessionManager');
-const { iniciarWorker, pararWorker } = require('../core/QueueManager');
+const { iniciarWorker, pararFila } = require('../core/QueueManager');
 const { autorizarInstanciaDoTenant } = require('../middleware/auth');
 
 const criarInstanciaSchema = z.object({
@@ -126,7 +126,7 @@ async function routes(fastify) {
         const instanceId = req.params.id;
 
         await sessionManager.destruirInstancia(instanceId).catch(() => {});
-        await pararWorker(instanceId).catch(() => {});
+        await pararFila(instanceId).catch(() => {});
         ultimoQrPorInstancia.delete(instanceId);
 
         await prisma.instance.delete({

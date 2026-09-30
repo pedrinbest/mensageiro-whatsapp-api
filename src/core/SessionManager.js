@@ -17,7 +17,12 @@ class SessionManager extends EventEmitter {
 
     async criarInstancia(instanceId) {
         if (this.instances.has(instanceId)) {
-            throw new Error(`Instancia ${instanceId} ja esta ativa.`);
+            const atual = this.instances.get(instanceId);
+            if (atual.status === 'CONECTADO' || atual.status === 'QR_PENDENTE' || atual.status === 'INICIANDO') {
+                throw new Error(`Instancia ${instanceId} ja esta ativa com status ${atual.status}.`);
+            }
+            // Se estava com erro ou desconectada, destrói antes de recriar
+            await this.destruirInstancia(instanceId).catch(() => {});
         }
 
         const client = new Client({
@@ -32,14 +37,25 @@ class SessionManager extends EventEmitter {
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--disable-gpu',
+                    '--disable-software-rasterizer',
                     '--disable-extensions',
                     '--disable-sync',
                     '--disable-background-networking',
                     '--disable-background-timer-throttling',
-                    '--disable-renderer-backgrounding',
-                    '--disable-features=Translate',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-breakpad',
+                    '--disable-component-extensions-with-background-pages',
+                    '--disable-features=Translate,BackForwardCache,AcceptCHFrame,MediaRouter,OptimizationHints',
                     '--disable-ipc-flooding-protection',
+                    '--disable-renderer-backgrounding',
+                    '--metrics-recording-only',
+                    '--mute-audio',
+                    '--no-default-browser-check',
+                    '--no-first-run',
+                    '--no-pings',
+                    '--no-zygote',
                     '--memory-pressure-off',
+                    '--js-flags=--max-old-space-size=256',
                 ],
             },
         });
@@ -76,7 +92,12 @@ class SessionManager extends EventEmitter {
             this.emit('message', { instanceId, message });
         });
 
-        await client.initialize();
+        try {
+            await client.initialize();
+        } catch (err) {
+            this.instances.delete(instanceId);
+            throw err;
+        }
 
         return client;
     }
@@ -112,7 +133,9 @@ class SessionManager extends EventEmitter {
         if (!instancia) return;
 
         try {
-            await instancia.client.destroy();
+            if (instancia.client) {
+                await instancia.client.destroy().catch(() => {});
+            }
         } finally {
             this.instances.delete(instanceId);
         }

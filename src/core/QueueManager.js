@@ -41,10 +41,13 @@ async function enfileirarEnvio(instanceId, { numero, mensagem, tipo = 'TEXTO', d
  * Sobe um Worker dedicado para a instancia, com rate limit proprio.
  * Chame apos a instancia ficar CONECTADO.
  */
-function iniciarWorker(instanceId, { maxPorJanela = 1, janelaMs = 3000 } = {}) {
+function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
     if (workers.has(instanceId)) {
         return workers.get(instanceId);
     }
+
+    const maxEnvios = Number(process.env.RATE_LIMIT_MAX || maxPorJanela);
+    const duracaoEnvio = Number(process.env.RATE_LIMIT_DURATION_MS || janelaMs);
 
     const worker = new Worker(
         `envio:${instanceId}`,
@@ -79,7 +82,7 @@ function iniciarWorker(instanceId, { maxPorJanela = 1, janelaMs = 3000 } = {}) {
         },
         {
             connection,
-            limiter: { max: maxPorJanela, duration: janelaMs },
+            limiter: { max: maxEnvios, duration: duracaoEnvio },
         }
     );
 
@@ -99,6 +102,15 @@ async function pararWorker(instanceId) {
     }
 }
 
+async function pararFila(instanceId) {
+    await pararWorker(instanceId).catch(() => {});
+    const fila = filas.get(instanceId);
+    if (fila) {
+        await fila.close().catch(() => {});
+        filas.delete(instanceId);
+    }
+}
+
 async function registrarMensagem(instanceId, dados) {
     try {
         await prisma.message.create({
@@ -113,4 +125,5 @@ async function registrarMensagem(instanceId, dados) {
     }
 }
 
-module.exports = { enfileirarEnvio, iniciarWorker, pararWorker, getFila };
+module.exports = { enfileirarEnvio, iniciarWorker, pararWorker, pararFila, getFila };
+

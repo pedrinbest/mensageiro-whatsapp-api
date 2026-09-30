@@ -37,6 +37,7 @@ async function encaminharParaWebhook(instanceId, message) {
                 'X-Webhook-Signature': assinatura,
             },
             body: corpo,
+            signal: AbortSignal.timeout(6000), // Timeout de 6 segundos para não travar a fila do Node
         });
         console.log(`[Webhook Resposta] HTTP Status: ${response.status} de ${instancia.webhookUrl}`);
     } catch (error) {

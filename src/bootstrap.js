@@ -44,11 +44,14 @@ function ligarListenerDeMensagens() {
 
         const from = message.from || '';
 
-        // Ignora status do WhatsApp, canais/newsletters e transmissões de sistema
+        // Ignora status do WhatsApp, canais/newsletters, transmissões de sistema e grupos
         if (
             from === 'status@broadcast' ||
             from.endsWith('@broadcast') ||
-            from.endsWith('@newsletter')
+            from.endsWith('@newsletter') ||
+            from.endsWith('@lid') ||
+            from.endsWith('@g.us') ||
+            message.isGroupMsg
         ) {
             return;
         }
