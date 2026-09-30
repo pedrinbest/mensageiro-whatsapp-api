@@ -14,10 +14,11 @@ async function encaminharParaWebhook(instanceId, message) {
         return;
     }
 
+    const textoMensagem = message.body || message.caption || '';
     const payload = {
         instanceId,
-        numero: (message.from || '').replace('@c.us', '').replace('@g.us', ''),
-        mensagem: message.body,
+        numero: (message.from || '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '').replace('@newsletter', ''),
+        mensagem: textoMensagem,
         isGrupo: message.from?.endsWith('@g.us') || false,
         timestamp: message.timestamp,
     };
@@ -29,7 +30,7 @@ async function encaminharParaWebhook(instanceId, message) {
         .digest('hex');
 
     try {
-        console.log(`[Webhook -> ${instancia.webhookUrl}] Enviando mensagem recebida de ${payload.numero}...`);
+        console.log(`[Webhook -> ${instancia.webhookUrl}] Enviando mensagem recebida de ${payload.numero} ("${textoMensagem.slice(0, 40)}")...`);
         const response = await fetch(instancia.webhookUrl, {
             method: 'POST',
             headers: {
@@ -46,7 +47,7 @@ async function encaminharParaWebhook(instanceId, message) {
 }
 
 async function registrarMensagemRecebida(instanceId, message) {
-    const conteudoBruto = message.body || '';
+    const conteudoBruto = message.body || message.caption || `[Mensagem tipo: ${message.type || 'desconhecido'}]`;
     const conteudo = conteudoBruto.length > 5000 
         ? conteudoBruto.slice(0, 5000) + '... (truncado)' 
         : conteudoBruto;
@@ -55,7 +56,7 @@ async function registrarMensagemRecebida(instanceId, message) {
         data: {
             instanceId,
             direcao: 'RECEBIDA',
-            numeroDestino: (message.from || '').replace('@c.us', '').replace('@g.us', '').replace('@newsletter', ''),
+            numeroDestino: (message.from || '').replace('@c.us', '').replace('@g.us', '').replace('@lid', '').replace('@newsletter', ''),
             tipo: 'TEXTO',
             conteudo,
             status: 'ENTREGUE',

@@ -30,6 +30,10 @@ class SessionManager extends EventEmitter {
                 clientId: instanceId,
                 dataPath: process.env.SESSIONS_PATH || './.wwebjs_auth',
             }),
+            webVersionCache: {
+                type: 'remote',
+                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1018994784-alpha.html',
+            },
             puppeteer: {
                 headless: true,
                 protocolTimeout: 180000, // 3 minutos para permitir injeção de scripts mesmo sob carga do servidor
@@ -65,34 +69,46 @@ class SessionManager extends EventEmitter {
         this.instances.set(instanceId, { client, status: 'INICIANDO' });
 
         client.on('qr', (qr) => {
+            console.log(`[WhatsApp -> Instância ${instanceId}] QR Code gerado.`);
             this._setStatus(instanceId, 'QR_PENDENTE');
             this.emit('qr', { instanceId, qr });
         });
 
         client.on('authenticated', () => {
+            console.log(`[WhatsApp -> Instância ${instanceId}] Autenticado com sucesso.`);
             this.emit('authenticated', { instanceId });
         });
 
         client.on('ready', () => {
             const numero = client.info?.wid?.user || null;
+            console.log(`[WhatsApp -> Instância ${instanceId}] CONECTADO e PRONTO! Número: ${numero}`);
             this._setStatus(instanceId, 'CONECTADO');
             this.emit('ready', { instanceId, numero });
         });
 
         client.on('auth_failure', (msg) => {
+            console.error(`[WhatsApp -> Instância ${instanceId}] Falha de autenticação:`, msg);
             this._setStatus(instanceId, 'ERRO');
             this.emit('auth_failure', { instanceId, msg });
         });
 
         client.on('disconnected', (reason) => {
+            console.warn(`[WhatsApp -> Instância ${instanceId}] Desconectado:`, reason);
             this._setStatus(instanceId, 'DESCONECTADO');
             this.emit('disconnected', { instanceId, reason });
         });
 
-        // Todo message_create ja nasce atrelado ao instanceId correto
-        client.on('message_create', (message) => {
+        // Escuta tanto 'message' quanto 'message_create' para compatibilidade total em qualquer versão
+        const emitirMensagem = (message) => {
+            const msgId = message.id?._serialized || message.id?.id;
+            if (msgId && this._jaProcessouMensagem(msgId)) {
+                return;
+            }
             this.emit('message', { instanceId, message });
-        });
+        };
+
+        client.on('message', emitirMensagem);
+        client.on('message_create', emitirMensagem);
 
         try {
             await client.initialize();
@@ -102,6 +118,21 @@ class SessionManager extends EventEmitter {
         }
 
         return client;
+    }
+
+    _jaProcessouMensagem(msgId) {
+        if (!this.mensagensProcessadas) {
+            this.mensagensProcessadas = new Set();
+        }
+        if (this.mensagensProcessadas.has(msgId)) {
+            return true;
+        }
+        this.mensagensProcessadas.add(msgId);
+        if (this.mensagensProcessadas.size > 2000) {
+            const primeiro = this.mensagensProcessadas.values().next().value;
+            this.mensagensProcessadas.delete(primeiro);
+        }
+        return false;
     }
 
     _setStatus(instanceId, status) {
