@@ -21,16 +21,32 @@ function getFila(instanceId) {
  * Enfileira um envio para UMA instancia especifica. Nunca existe fila global:
  * isso evita que um numero lento ou banido atrase o backlog de outro.
  */
-async function enfileirarEnvio(instanceId, { numero, mensagem, tipo = 'TEXTO', delayMs = 0 }) {
+async function enfileirarEnvio(
+    instanceId,
+    {
+        numero,
+        mensagem,
+        tipo = 'TEXTO',
+        delayMs = 0,
+        requestId
+    }
+) {
     const fila = getFila(instanceId);
+
+    const jobId = requestId || `${instanceId}_${Date.now()}_${numero}`;
 
     return fila.add(
         'enviar-mensagem',
-        { instanceId, numero, mensagem, tipo },
         {
+            instanceId,
+            numero,
+            mensagem,
+            tipo
+        },
+        {
+            jobId,
             delay: delayMs,
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 5000 },
+            attempts: 1,
             removeOnComplete: 100,
             removeOnFail: 500,
         }
