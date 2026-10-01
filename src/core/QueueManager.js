@@ -88,7 +88,12 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
                 chatId._serialized,
                 mensagem
             );
-
+            console.log(`[fila:${instanceId}] retorno sendMessage:`, enviado);
+            console.log(`[fila:${instanceId}] tipo retorno:`, typeof enviado);
+            console.log(
+                `[fila:${instanceId}] chatId:`,
+                chatId
+            );
             if (!enviado) {
                 console.warn(
                     `[fila:${instanceId}] sendMessage não retornou objeto para ${numero}`
