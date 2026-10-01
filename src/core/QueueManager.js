@@ -81,6 +81,7 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
                     status: 'FALHA',
                     erro: 'Numero invalido ou sem WhatsApp',
                 });
+
                 throw new Error(`Numero invalido: ${numero}`);
             }
 
@@ -88,32 +89,18 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
                 chatId._serialized,
                 mensagem
             );
-            console.log(`[fila:${instanceId}] retorno sendMessage:`, enviado);
-            console.log(`[fila:${instanceId}] tipo retorno:`, typeof enviado);
-            console.log(
-                `[fila:${instanceId}] chatId:`,
-                chatId
-            );
-            if (!enviado) {
-                console.warn(
-                    `[fila:${instanceId}] sendMessage não retornou objeto para ${numero}`
-                );
-
-                await registrarMensagem(instanceId, {
-                    numeroDestino: numero,
-                    tipo,
-                    conteudo: mensagem,
-                    status: 'ENVIADA',
-                    externalId: null,
-                });
-
-                return { externalId: null };
-            }
 
             const externalId =
                 enviado?.id?._serialized ||
                 enviado?.id?.id ||
                 null;
+
+            if (!enviado) {
+                console.warn(
+                    `[fila:${instanceId}] mensagem enviada para ${numero}, ` +
+                    `mas whatsapp-web.js não retornou o objeto Message.`
+                );
+            }
 
             await registrarMensagem(instanceId, {
                 numeroDestino: numero,
@@ -123,19 +110,29 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
                 externalId,
             });
 
-            return { externalId };
+            return {
+                externalId,
+                retornoDisponivel: !!enviado,
+            };
         },
         {
             connection,
-            limiter: { max: maxEnvios, duration: duracaoEnvio },
+            limiter: {
+                max: maxEnvios,
+                duration: duracaoEnvio,
+            },
         }
     );
 
     worker.on('failed', (job, err) => {
-        console.error(`[fila:${instanceId}] job ${job?.id} falhou:`, err.message);
+        console.error(
+            `[fila:${instanceId}] job ${job?.id} falhou:`,
+            err.message
+        );
     });
 
     workers.set(instanceId, worker);
+
     return worker;
 }
 
