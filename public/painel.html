@@ -133,8 +133,38 @@ function selectInst(id){selectedInstance=id;['sendInstance','batchInstance','otp
 function showCreate(){$('createBox').classList.toggle('hidden')}
 async function createInstance(){try{const d=await req('/instances',{method:'POST',body:JSON.stringify({nome:$('newName').value,webhookUrl:$('newWebhook').value||undefined})});toast('Instância criada: '+d.instanceId);$('createBox').classList.add('hidden');await loadInstances();setTimeout(()=>showQr(d.instanceId),1500)}catch(e){toast(e.message,true)}}
 async function showQr(id){
- const box=$('qr-'+id);box.classList.remove('hidden');box.innerHTML='<div class="muted">Carregando QR...</div>';
- try{const d=await req('/instances/'+id+'/qr');const img=document.createElement('img');img.alt='QR Code';await QRCode.toDataURL(d.qr,{width:250,margin:1},(err,url)=>{if(err)throw err;img.src=url});box.innerHTML='';box.appendChild(img)}catch(e){box.innerHTML='<div class="muted">'+esc(e.message)+'</div>'}
+    const box = $('qr-'+id);
+    box.classList.remove('hidden');
+    box.innerHTML = '<div class="muted">Carregando QR...</div>';
+
+    try {
+        const d = await req('/instances/'+id+'/qr');
+
+        const img = document.createElement('img');
+        img.alt = 'QR Code';
+
+        QRCode.toDataURL(
+            d.qr,
+            {
+                width: 250,
+                margin: 1
+            },
+            (err, url) => {
+                if (err) {
+                    console.error(err);
+                    box.innerHTML = '<div class="muted">Erro ao gerar QR Code</div>';
+                    return;
+                }
+
+                img.src = url;
+                box.innerHTML = '';
+                box.appendChild(img);
+            }
+        );
+
+    } catch(e) {
+        box.innerHTML = '<div class="muted">'+esc(e.message)+'</div>';
+    }
 }
 async function refreshStatus(id){try{const d=await req('/instances/'+id+'/status');toast('Status: '+d.status);await loadInstances()}catch(e){toast(e.message,true)}}
 async function deleteInstance(id){if(!confirm('Excluir esta instância e desconectar o WhatsApp?'))return;try{await req('/instances/'+id,{method:'DELETE'});toast('Instância excluída.');await loadInstances()}catch(e){toast(e.message,true)}}
