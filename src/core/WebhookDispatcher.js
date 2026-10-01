@@ -6,7 +6,12 @@ const { extrairNumero } = require('../utils/helpers');
  * Encaminha uma mensagem recebida para o webhook cadastrado NAQUELA instancia.
  */
 async function encaminharParaWebhook(instanceId, message) {
-    const instancia = await prisma.instance.findUnique({ where: { id: instanceId } });
+    const instancia = await prisma.instance.findUnique({
+        where: { id: instanceId }
+    });
+
+    console.log('[WEBHOOK DEBUG] instanceId:', instanceId);
+    console.log('[WEBHOOK DEBUG] instancia:', JSON.stringify(instancia, null, 2));
 
     if (!instancia?.webhookUrl) {
         console.log(`[Webhook Aviso] Instancia ${instanceId} nao possui webhookUrl cadastrada.`);
