@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mensageiro WhatsApp — Painel</title>
+<style>
+:root{--bg:#070a10;--card:#0e131c;--card2:#111925;--line:#1d2938;--text:#edf4fb;--muted:#8ea0b5;--cyan:#00dcff;--green:#31d07c;--red:#ff5570;--yellow:#f5c451}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#102235 0,#070a10 38%);color:var(--text);font-family:Inter,Arial,sans-serif}
+header{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:#080c13e8;position:sticky;top:0;z-index:5;backdrop-filter:blur(10px)}
+.logo{font-weight:800;letter-spacing:1.5px}.logo span{color:var(--cyan)} header .links{display:flex;gap:10px}a,button{font:inherit}.link{color:var(--muted);text-decoration:none;padding:8px 10px}.link:hover{color:var(--text)}
+main{max-width:1400px;margin:auto;padding:24px}.grid{display:grid;grid-template-columns:320px 1fr;gap:18px}.card{background:linear-gradient(180deg,#101722,#0c1119);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 10px 30px #0004}.card h2,.card h3{margin:0 0 14px}.stack{display:grid;gap:10px}label{font-size:12px;color:var(--muted)}input,textarea,select{width:100%;background:#080d14;border:1px solid #243245;border-radius:9px;color:var(--text);padding:10px 11px;outline:none}textarea{min-height:100px;resize:vertical}input:focus,textarea:focus,select:focus{border-color:var(--cyan)}
+button{border:0;border-radius:9px;padding:10px 13px;cursor:pointer;background:#173044;color:#dff9ff}button.primary{background:var(--cyan);color:#001018;font-weight:700}button.danger{background:#401824;color:#ffb8c4}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.muted{color:var(--muted);font-size:13px}.status{display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border-radius:999px;background:#17202c;font-size:12px}.dot{width:7px;height:7px;border-radius:50%;background:#8ea0b5}.ok .dot{background:var(--green)}.warn .dot{background:var(--yellow)}.bad .dot{background:var(--red)}
+.tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin-bottom:16px}.tab{background:none;color:var(--muted);border-radius:0;border-bottom:2px solid transparent}.tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.instance{padding:14px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:#0b1119}.instance.selected{border-color:#167d92;box-shadow:0 0 0 1px #167d9233}.instance-title{display:flex;justify-content:space-between;gap:12px}.small{font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all}.hidden{display:none!important}.qr{display:flex;justify-content:center;background:#fff;border-radius:10px;padding:16px;margin:12px auto;max-width:290px}.qr img{width:100%}.toast{position:fixed;right:20px;bottom:20px;background:#111b27;border:1px solid var(--line);padding:12px 15px;border-radius:10px;max-width:420px;z-index:10}.toast.err{border-color:#6d2637}.metric{font-size:28px;font-weight:800}.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:9px;border-bottom:1px solid var(--line);font-size:13px}.code{background:#060a0f;border:1px solid var(--line);padding:12px;border-radius:9px;white-space:pre-wrap;overflow:auto;font-size:12px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}header{padding:0 14px}main{padding:14px}}
+</style>
+</head>
+<body>
+<header><div class="logo">MENSA<span>GEIRO</span> <small style="color:#637589">API</small></div>
+<div class="links"><a class="link" href="/docs" target="_blank">Swagger</a><a class="link" href="/health" target="_blank">Health</a></div></header>
+<main>
+<div class="grid">
+<section class="card">
+<h2>Acesso</h2>
+<div class="stack">
+<div><label>URL da API</label><input id="apiUrl" value=""></div>
+<div><label>Admin Key</label><input id="adminKey" type="password" placeholder="ADMIN_KEY"></div>
+<button class="primary" onclick="saveConfig()">Salvar configuração</button>
+<hr style="border-color:var(--line);width:100%">
+<div><label>Tenant / API Key</label><select id="tenantSelect" onchange="useTenant(this.value)"><option value="">Selecione um tenant...</option></select></div>
+<div><label>API Key atual</label><input id="tenantKey" class="mono" placeholder="Bearer API key"></div>
+<div class="row"><button onclick="loadTenants()">Carregar tenants</button><button onclick="loadInstances()">Atualizar</button></div>
+<div id="tenantInfo" class="muted"></div>
+</div>
+</section>
+
+<section>
+<div class="card">
+<div class="tabs">
+<button class="tab active" data-tab="instances" onclick="tab('instances',this)">Instâncias</button>
+<button class="tab" data-tab="send" onclick="tab('send',this)">Enviar</button>
+<button class="tab" data-tab="batch" onclick="tab('batch',this)">Lote</button>
+<button class="tab" data-tab="otp" onclick="tab('otp',this)">OTP</button>
+<button class="tab" data-tab="history" onclick="tab('history',this)">Histórico</button>
+</div>
+
+<div id="tab-instances">
+<div class="row" style="justify-content:space-between"><div><h2 style="margin:0">Instâncias</h2><div class="muted">Conecte e monitore os números WhatsApp.</div></div><button class="primary" onclick="showCreate()">+ Nova instância</button></div>
+<div id="createBox" class="card hidden" style="margin-top:14px;background:#0a1018">
+<div class="stack"><div><label>Nome</label><input id="newName" placeholder="Suporte"></div><div><label>Webhook URL (opcional)</label><input id="newWebhook" placeholder="https://seusistema.com/webhook"></div><button class="primary" onclick="createInstance()">Criar e gerar QR</button></div></div>
+<div id="instances" style="margin-top:16px"></div>
+</div>
+
+<div id="tab-send" class="hidden">
+<h2>Enviar mensagem</h2><div class="muted" style="margin-bottom:15px">A mensagem será colocada na fila BullMQ da instância selecionada.</div>
+<div class="stack">
+<div><label>Instância</label><select id="sendInstance"></select></div>
+<div><label>Número com DDI</label><input id="sendNumber" placeholder="556299999999"></div>
+<div><label>Mensagem</label><textarea id="sendMessage" placeholder="Olá!"></textarea></div>
+<div><label>Tipo</label><select id="sendType"><option>TEXTO</option><option>NOTIFICACAO</option><option>TEMPLATE</option></select></div>
+<div><label>Delay (ms)</label><input id="sendDelay" type="number" min="0" value="0"></div>
+<button class="primary" onclick="sendMessage()">Enviar</button>
+<pre id="sendResult" class="code hidden"></pre>
+</div>
+</div>
+
+<div id="tab-batch" class="hidden">
+<h2>Envio em lote</h2><div class="stack">
+<div><label>Instância</label><select id="batchInstance"></select></div>
+<div><label>Mensagem ({nome} será substituído)</label><textarea id="batchMessage" placeholder="Olá {nome}, sua fatura vence amanhã!"></textarea></div>
+<div><label>Delay entre contatos (ms)</label><input id="batchDelay" type="number" min="0" value="3000"></div>
+<div><label>Contatos — JSON</label><textarea id="batchContacts">[
+  {"numero":"556299999999","nome":"Pedro"},
+  {"numero":"556288888888","nome":"Maria"}
+]</textarea></div>
+<button class="primary" onclick="sendBatch()">Enfileirar lote</button><pre id="batchResult" class="code hidden"></pre>
+</div>
+</div>
+
+<div id="tab-otp" class="hidden">
+<h2>OTP</h2><div class="stack">
+<div><label>Instância</label><select id="otpInstance"></select></div>
+<div><label>Número</label><input id="otpNumber" placeholder="556299999999"></div>
+<div class="row"><button class="primary" onclick="sendOtp()">Enviar OTP</button><input id="otpCode" placeholder="Código recebido" style="max-width:180px"><button onclick="verifyOtp()">Validar</button></div>
+<pre id="otpResult" class="code hidden"></pre>
+</div>
+</div>
+
+<div id="tab-history" class="hidden">
+<div class="row" style="justify-content:space-between"><div><h2 style="margin:0">Histórico</h2><div class="muted">Últimas 200 mensagens da instância.</div></div><button onclick="loadHistory()">Atualizar</button></div>
+<div id="historyTable" style="overflow:auto;margin-top:12px"></div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<div id="toast" class="toast hidden"></div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let instances=[]; let selectedInstance='';
+
+function apiBase(){return ($('apiUrl').value||location.origin).replace(/\/$/,'')}
+function key(){return $('tenantKey').value.trim()}
+function headers(json=true){const h={}; if(key())h.Authorization='Bearer '+key(); if(json)h['Content-Type']='application/json'; return h}
+function toast(msg,err=false){const t=$('toast');t.textContent=msg;t.className='toast '+(err?'err':'');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.add('hidden'),3500)}
+function saveConfig(){localStorage.setItem('msg_api_url',$('apiUrl').value);localStorage.setItem('msg_admin_key',$('adminKey').value);localStorage.setItem('msg_tenant_key',$('tenantKey').value);toast('Configuração salva.')}
+function loadConfig(){$('apiUrl').value=localStorage.getItem('msg_api_url')||location.origin;$('adminKey').value=localStorage.getItem('msg_admin_key')||'';$('tenantKey').value=localStorage.getItem('msg_tenant_key')||''}
+async function req(path,opt={}){const r=await fetch(apiBase()+path,{...opt,headers:{...headers(!!opt.body),...(opt.headers||{})}});let d;try{d=await r.json()}catch{d={erro:await r.text()}}if(!r.ok)throw new Error(d.erro?.formErrors?.join?.(', ')||d.erro?.message||d.erro||('HTTP '+r.status));return d}
+
+async function loadTenants(){
+ const k=$('adminKey').value.trim(); if(!k)return toast('Informe a Admin Key.',true);
+ try{const r=await fetch(apiBase()+'/admin/tenants',{headers:{'X-Admin-Key':k}});const d=await r.json();if(!r.ok)throw new Error(d.erro||'Falha');
+ const s=$('tenantSelect');s.innerHTML='<option value="">Selecione um tenant...</option>'+d.map(t=>`<option value="${esc(t.apiKey)}" data-id="${esc(t.id)}">${esc(t.nome)} — ${t.ativo?'ATIVO':'INATIVO'} — ${t.instances} inst.</option>`).join('');
+ window.tenants=d; toast(d.length+' tenant(s) carregado(s).');
+ }catch(e){toast(e.message,true)}
+}
+function useTenant(v){$('tenantKey').value=v||'';localStorage.setItem('msg_tenant_key',$('tenantKey').value);const t=(window.tenants||[]).find(x=>x.apiKey===v);$('tenantInfo').textContent=t?`${t.nome} · ${t.ativo?'ativo':'inativo'} · ${t.instances} instância(s)`:'';if(v)loadInstances()}
+async function loadInstances(){
+ if(!key())return toast('Informe a API Key do tenant.',true);
+ try{instances=await req('/instances');renderInstances();fillSelects();}catch(e){toast(e.message,true)}
+}
+function renderInstances(){
+ const box=$('instances'); if(!instances.length){box.innerHTML='<div class="muted" style="padding:25px;text-align:center">Nenhuma instância cadastrada.</div>';return}
+ box.innerHTML=instances.map(i=>`<div class="instance ${selectedInstance===i.id?'selected':''}">
+ <div class="instance-title"><div><strong>${esc(i.nome||'Sem nome')}</strong><div class="muted mono">${esc(i.id)}</div></div><span class="status ${i.status==='CONECTADO'?'ok':i.status==='QR_PENDENTE'?'warn':i.status==='ERRO'?'bad':''}"><span class="dot"></span>${esc(i.status)}</span></div>
+ <div class="row" style="margin-top:12px"><span class="muted">${esc(i.numero||'Número não conectado')}</span><button onclick="selectInst('${i.id}')">Selecionar</button><button onclick="showQr('${i.id}')">QR Code</button><button onclick="refreshStatus('${i.id}')">Status</button><button onclick="deleteInstance('${i.id}')" class="danger">Excluir</button></div>
+ <div id="qr-${i.id}" class="qr hidden"></div>
+ </div>`).join('')
+}
+function fillSelects(){['sendInstance','batchInstance','otpInstance'].forEach(id=>{const s=$(id);s.innerHTML=instances.map(i=>`<option value="${i.id}">${esc(i.nome||i.id)} — ${esc(i.status)}</option>`).join('')})}
+function selectInst(id){selectedInstance=id;['sendInstance','batchInstance','otpInstance'].forEach(x=>$(x).value=id);renderInstances();tab('send',document.querySelector('[data-tab="send"]'))}
+function showCreate(){$('createBox').classList.toggle('hidden')}
+async function createInstance(){try{const d=await req('/instances',{method:'POST',body:JSON.stringify({nome:$('newName').value,webhookUrl:$('newWebhook').value||undefined})});toast('Instância criada: '+d.instanceId);$('createBox').classList.add('hidden');await loadInstances();setTimeout(()=>showQr(d.instanceId),1500)}catch(e){toast(e.message,true)}}
+async function showQr(id){
+ const box=$('qr-'+id);box.classList.remove('hidden');box.innerHTML='<div class="muted">Carregando QR...</div>';
+ try{const d=await req('/instances/'+id+'/qr');const img=document.createElement('img');img.alt='QR Code';await QRCode.toDataURL(d.qr,{width:250,margin:1},(err,url)=>{if(err)throw err;img.src=url});box.innerHTML='';box.appendChild(img)}catch(e){box.innerHTML='<div class="muted">'+esc(e.message)+'</div>'}
+}
+async function refreshStatus(id){try{const d=await req('/instances/'+id+'/status');toast('Status: '+d.status);await loadInstances()}catch(e){toast(e.message,true)}}
+async function deleteInstance(id){if(!confirm('Excluir esta instância e desconectar o WhatsApp?'))return;try{await req('/instances/'+id,{method:'DELETE'});toast('Instância excluída.');await loadInstances()}catch(e){toast(e.message,true)}}
+async function sendMessage(){try{const d=await req('/instances/'+$('sendInstance').value+'/messages',{method:'POST',body:JSON.stringify({numero:$('sendNumber').value,mensagem:$('sendMessage').value,tipo:$('sendType').value,delayMs:Number($('sendDelay').value||0)})});showResult('sendResult',d)}catch(e){showResult('sendResult',{erro:e.message})}}
+async function sendBatch(){try{const contatos=JSON.parse($('batchContacts').value);const d=await req('/instances/'+$('batchInstance').value+'/messages/batch',{method:'POST',body:JSON.stringify({mensagemTemplate:$('batchMessage').value,delayMs:Number($('batchDelay').value||0),contatos})});showResult('batchResult',d)}catch(e){showResult('batchResult',{erro:e.message})}}
+async function sendOtp(){try{const d=await req('/instances/'+$('otpInstance').value+'/otp/send',{method:'POST',body:JSON.stringify({numero:$('otpNumber').value})});showResult('otpResult',d)}catch(e){showResult('otpResult',{erro:e.message})}}
+async function verifyOtp(){try{const d=await req('/instances/'+$('otpInstance').value+'/otp/verify',{method:'POST',body:JSON.stringify({numero:$('otpNumber').value,codigo:$('otpCode').value})});showResult('otpResult',d)}catch(e){showResult('otpResult',{erro:e.message})}}
+async function loadHistory(){try{const id=$('sendInstance').value||selectedInstance;if(!id)return toast('Selecione uma instância.',true);const d=await req('/instances/'+id+'/messages?limit=200');$('historyTable').innerHTML='<table class="table"><thead><tr><th>Data</th><th>Direção</th><th>Número</th><th>Tipo</th><th>Status</th><th>Conteúdo</th></tr></thead><tbody>'+d.map(m=>`<tr><td>${new Date(m.createdAt).toLocaleString()}</td><td>${esc(m.direcao)}</td><td>${esc(m.numeroDestino||'')}</td><td>${esc(m.tipo)}</td><td>${esc(m.status)}</td><td>${esc(m.conteudo||m.erro||'')}</td></tr>`).join('')+'</tbody></table>'}catch(e){toast(e.message,true)}}
+function showResult(id,d){$(id).classList.remove('hidden');$(id).textContent=JSON.stringify(d,null,2)}
+function tab(name,btn){document.querySelectorAll('[id^="tab-"]').forEach(x=>x.classList.add('hidden'));$('tab-'+name).classList.remove('hidden');document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');if(name==='history')loadHistory()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+loadConfig();loadInstances();
+</script>
+</body></html>

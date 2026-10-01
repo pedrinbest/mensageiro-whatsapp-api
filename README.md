@@ -3,6 +3,28 @@
 API multi-tenant para envio de mensagens via WhatsApp (chatbot, notificações e OTP),
 com **isolamento total** entre números/instâncias conectadas.
 
+
+## Painel e Swagger
+
+A API agora possui duas interfaces para facilitar os testes:
+
+- **Painel gerenciador:** `http://SEU_DOMINIO:9000/painel`
+- **Swagger UI:** `http://SEU_DOMINIO:9000/docs`
+- **OpenAPI JSON:** `http://SEU_DOMINIO:9000/openapi.json`
+
+No painel você pode:
+- informar a `ADMIN_KEY` e listar/criar tenants;
+- selecionar a `API Key` de um tenant;
+- criar/excluir instâncias;
+- visualizar o QR Code;
+- acompanhar status;
+- enviar mensagem individual;
+- enviar mensagens em lote;
+- enviar e validar OTP;
+- consultar histórico de mensagens.
+
+O Swagger possui **Try it out** e o botão **Authorize**. Para rotas de tenant, informe somente a API key no formato de Bearer. Para rotas administrativas, use `X-Admin-Key`.
+
 ## Arquitetura
 
 ```
