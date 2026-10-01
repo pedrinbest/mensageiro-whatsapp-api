@@ -84,17 +84,41 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
                 throw new Error(`Numero invalido: ${numero}`);
             }
 
-            const enviado = await client.sendMessage(chatId._serialized, mensagem);
+            const enviado = await client.sendMessage(
+                chatId._serialized,
+                mensagem
+            );
+
+            if (!enviado) {
+                console.warn(
+                    `[fila:${instanceId}] sendMessage não retornou objeto para ${numero}`
+                );
+
+                await registrarMensagem(instanceId, {
+                    numeroDestino: numero,
+                    tipo,
+                    conteudo: mensagem,
+                    status: 'ENVIADA',
+                    externalId: null,
+                });
+
+                return { externalId: null };
+            }
+
+            const externalId =
+                enviado?.id?._serialized ||
+                enviado?.id?.id ||
+                null;
 
             await registrarMensagem(instanceId, {
                 numeroDestino: numero,
                 tipo,
                 conteudo: mensagem,
                 status: 'ENVIADA',
-                externalId: enviado.id._serialized,
+                externalId,
             });
 
-            return { externalId: enviado.id._serialized };
+            return { externalId };
         },
         {
             connection,
