@@ -18,11 +18,13 @@ async function encaminharParaWebhook(instanceId, message) {
 
     const client = sessionManager.estaAtiva(instanceId) ? sessionManager.getClient(instanceId) : null;
     const textoMensagem = message.body || message.caption || '';
-    const numeroLimpo = await extrairNumeroReal(message, client);
+    const numeroId = extrairNumero(message.author || message.from || message.to);
+    const numeroLimpo = (await extrairNumeroReal(message, client)) || numeroId;
 
     const payload = {
         instanceId,
         numero: numeroLimpo,
+        numeroId: numeroId,
         mensagem: textoMensagem,
         isGrupo: message.from?.endsWith('@g.us') || false,
         timestamp: message.timestamp,
