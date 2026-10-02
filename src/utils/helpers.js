@@ -38,5 +38,9 @@ async function extrairNumeroReal(message) {
     return extrairNumero(jid);
 }
 
+function aguardar(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 module.exports = { normalizarNumero, extrairNumero, extrairNumeroReal, gerarApiKey, gerarWebhookSecret, aguardar };
 
