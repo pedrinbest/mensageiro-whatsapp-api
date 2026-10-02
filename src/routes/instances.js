@@ -125,15 +125,42 @@ async function routes(fastify) {
     fastify.delete('/instances/:id', { preHandler: autorizarInstanciaDoTenant }, async (req, reply) => {
         const instanceId = req.params.id;
 
-        await sessionManager.destruirInstancia(instanceId).catch(() => {});
-        await pararFila(instanceId).catch(() => {});
-        ultimoQrPorInstancia.delete(instanceId);
+        try {
+            // 1. Encerra a sessão WhatsApp
+            await sessionManager.destruirInstancia(instanceId).catch((err) => {
+                console.warn(`[Aviso] Falha ao destruir sessão WhatsApp (${instanceId}):`, err.message);
+            });
 
-        await prisma.instance.delete({
-            where: { id: instanceId },
-        }).catch((err) => console.error(`Erro ao deletar instancia ${instanceId} do Prisma:`, err.message));
+            // 2. Para e remove a fila BullMQ da instância
+            await pararFila(instanceId).catch((err) => {
+                console.warn(`[Aviso] Falha ao parar fila BullMQ (${instanceId}):`, err.message);
+            });
 
-        return reply.send({ status: 'DELETADO', id: instanceId });
+            // 3. Remove dados temporários da memória
+            ultimoQrPorInstancia.delete(instanceId);
+
+            // 4 & 5. Remove registros dependentes e a instância de forma atômica
+            await prisma.$transaction([
+                prisma.message.deleteMany({ where: { instanceId } }),
+                prisma.otpCode.deleteMany({ where: { instanceId } }),
+                prisma.conversationState.deleteMany({ where: { instanceId } }),
+                prisma.instance.delete({ where: { id: instanceId } }),
+            ]);
+
+            return reply.send({
+                sucesso: true,
+                status: 'DELETADO',
+                id: instanceId,
+                mensagem: 'Instância e registros vinculados excluídos com sucesso.',
+            });
+        } catch (erro) {
+            console.error(`Erro ao deletar instancia ${instanceId}:`, erro);
+            return reply.code(500).send({
+                sucesso: false,
+                erro: 'Falha ao excluir a instância no banco de dados.',
+                detalhes: erro.message,
+            });
+        }
     });
 }
 

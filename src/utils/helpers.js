@@ -17,9 +17,26 @@ function gerarWebhookSecret() {
     return crypto.randomBytes(24).toString('hex');
 }
 
-function aguardar(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+async function extrairNumeroReal(message) {
+    if (!message) return '';
+
+    try {
+        if (typeof message.getContact === 'function') {
+            const contact = await message.getContact();
+            if (contact) {
+                if (contact.number) {
+                    return normalizarNumero(contact.number);
+                }
+                if (contact.id?.user && !contact.id._serialized?.endsWith('@lid')) {
+                    return normalizarNumero(contact.id.user);
+                }
+            }
+        }
+    } catch (_) {}
+
+    const jid = message.author || message.from || message.to || '';
+    return extrairNumero(jid);
 }
 
-module.exports = { normalizarNumero, extrairNumero, gerarApiKey, gerarWebhookSecret, aguardar };
+module.exports = { normalizarNumero, extrairNumero, extrairNumeroReal, gerarApiKey, gerarWebhookSecret, aguardar };
 

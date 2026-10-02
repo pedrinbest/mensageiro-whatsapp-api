@@ -71,7 +71,18 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
             const { numero, mensagem, tipo } = job.data;
             const client = sessionManager.getClient(instanceId);
 
-            const chatId = await client.getNumberId(numero);
+            let chatId = await client.getNumberId(numero);
+
+            if (!chatId) {
+                // Se getNumberId falhar, tenta formatos diretos (@c.us ou @lid)
+                if (typeof numero === 'string' && numero.includes('@')) {
+                    chatId = { _serialized: numero };
+                } else if (typeof numero === 'string' && numero.length >= 10 && numero.length <= 15) {
+                    chatId = { _serialized: `${numero}@c.us` };
+                } else if (typeof numero === 'string' && numero.length > 0) {
+                    chatId = { _serialized: `${numero}@lid` };
+                }
+            }
 
             if (!chatId) {
                 await registrarMensagem(instanceId, {

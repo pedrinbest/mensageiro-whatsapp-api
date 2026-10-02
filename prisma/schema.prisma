@@ -40,7 +40,7 @@ model Instance {
 model Message {
   id             String   @id @default(uuid())
   instanceId     String   @map("instance_id")
-  instance       Instance @relation(fields: [instanceId], references: [id])
+  instance       Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   direcao        String // ENVIADA | RECEBIDA
   numeroDestino  String?  @map("numero_destino")
   tipo           String   @default("TEXTO") // TEXTO | OTP | NOTIFICACAO | TEMPLATE
@@ -57,7 +57,7 @@ model Message {
 model OtpCode {
   id         String   @id @default(uuid())
   instanceId String   @map("instance_id")
-  instance   Instance @relation(fields: [instanceId], references: [id])
+  instance   Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   numero     String
   codigo     String
   usado      Boolean  @default(false)
@@ -71,7 +71,7 @@ model OtpCode {
 
 model ConversationState {
   instanceId String   @map("instance_id")
-  instance   Instance @relation(fields: [instanceId], references: [id])
+  instance   Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   numero     String
   etapa      String?
   dados      Json     @default("{}")

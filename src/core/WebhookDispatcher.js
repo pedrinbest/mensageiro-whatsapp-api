@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../db/prisma');
-const { extrairNumero } = require('../utils/helpers');
+const { extrairNumero, extrairNumeroReal } = require('../utils/helpers');
 
 /**
  * Encaminha uma mensagem recebida para o webhook cadastrado NAQUELA instancia.
@@ -19,7 +19,7 @@ async function encaminharParaWebhook(instanceId, message) {
     }
 
     const textoMensagem = message.body || message.caption || '';
-    const numeroLimpo = extrairNumero(message.from) || extrairNumero(message.to);
+    const numeroLimpo = await extrairNumeroReal(message);
 
     const payload = {
         instanceId,
@@ -57,7 +57,7 @@ async function registrarMensagemRecebida(instanceId, message) {
         ? conteudoBruto.slice(0, 5000) + '... (truncado)' 
         : conteudoBruto;
 
-    const numeroLimpo = extrairNumero(message.from) || extrairNumero(message.to);
+    const numeroLimpo = await extrairNumeroReal(message);
 
     await prisma.message.create({
         data: {
