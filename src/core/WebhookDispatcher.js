@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../db/prisma');
+const sessionManager = require('./SessionManager');
 const { extrairNumero, extrairNumeroReal } = require('../utils/helpers');
 
 /**
@@ -10,16 +11,14 @@ async function encaminharParaWebhook(instanceId, message) {
         where: { id: instanceId }
     });
 
-    console.log('[WEBHOOK DEBUG] instanceId:', instanceId);
-    console.log('[WEBHOOK DEBUG] instancia:', JSON.stringify(instancia, null, 2));
-
     if (!instancia?.webhookUrl) {
         console.log(`[Webhook Aviso] Instancia ${instanceId} nao possui webhookUrl cadastrada.`);
         return;
     }
 
+    const client = sessionManager.estaAtiva(instanceId) ? sessionManager.getClient(instanceId) : null;
     const textoMensagem = message.body || message.caption || '';
-    const numeroLimpo = await extrairNumeroReal(message);
+    const numeroLimpo = await extrairNumeroReal(message, client);
 
     const payload = {
         instanceId,
@@ -57,7 +56,8 @@ async function registrarMensagemRecebida(instanceId, message) {
         ? conteudoBruto.slice(0, 5000) + '... (truncado)' 
         : conteudoBruto;
 
-    const numeroLimpo = await extrairNumeroReal(message);
+    const client = sessionManager.estaAtiva(instanceId) ? sessionManager.getClient(instanceId) : null;
+    const numeroLimpo = await extrairNumeroReal(message, client);
 
     await prisma.message.create({
         data: {

@@ -17,9 +17,22 @@ function gerarWebhookSecret() {
     return crypto.randomBytes(24).toString('hex');
 }
 
-async function extrairNumeroReal(message) {
+async function extrairNumeroReal(message, client = null) {
     if (!message) return '';
 
+    const jid = message.author || message.from || message.to || '';
+
+    // 1. Se tiver o client do whatsapp-web.js, usa o método nativo de resolução de LID -> Telefone
+    if (client && typeof client.getContactLidAndPhone === 'function' && jid) {
+        try {
+            const res = await client.getContactLidAndPhone(jid);
+            if (res && res[0] && res[0].pn) {
+                return normalizarNumero(res[0].pn);
+            }
+        } catch (_) {}
+    }
+
+    // 2. Tenta através de getContact() do whatsapp-web.js
     try {
         if (typeof message.getContact === 'function') {
             const contact = await message.getContact();
@@ -27,14 +40,13 @@ async function extrairNumeroReal(message) {
                 if (contact.number) {
                     return normalizarNumero(contact.number);
                 }
-                if (contact.id?.user && !contact.id._serialized?.endsWith('@lid')) {
+                if (contact.id?.user && !contact.id?._serialized?.endsWith('@lid')) {
                     return normalizarNumero(contact.id.user);
                 }
             }
         }
     } catch (_) {}
 
-    const jid = message.author || message.from || message.to || '';
     return extrairNumero(jid);
 }
 

@@ -74,13 +74,25 @@ function iniciarWorker(instanceId, { maxPorJanela = 2, janelaMs = 1000 } = {}) {
             let chatId = await client.getNumberId(numero);
 
             if (!chatId) {
-                // Se getNumberId falhar, tenta formatos diretos (@c.us ou @lid)
                 if (typeof numero === 'string' && numero.includes('@')) {
                     chatId = { _serialized: numero };
-                } else if (typeof numero === 'string' && numero.length >= 10 && numero.length <= 15) {
-                    chatId = { _serialized: `${numero}@c.us` };
-                } else if (typeof numero === 'string' && numero.length > 0) {
-                    chatId = { _serialized: `${numero}@lid` };
+                } else {
+                    try {
+                        const res = await client.getContactLidAndPhone(`${numero}@lid`);
+                        if (res && res[0] && res[0].pn) {
+                            chatId = { _serialized: res[0].pn };
+                        } else if (res && res[0] && res[0].lid) {
+                            chatId = { _serialized: res[0].lid };
+                        }
+                    } catch (_) {}
+
+                    if (!chatId) {
+                        if (typeof numero === 'string' && numero.length >= 10 && numero.length <= 13) {
+                            chatId = { _serialized: `${numero}@c.us` };
+                        } else if (typeof numero === 'string' && numero.length > 0) {
+                            chatId = { _serialized: `${numero}@lid` };
+                        }
+                    }
                 }
             }
 
